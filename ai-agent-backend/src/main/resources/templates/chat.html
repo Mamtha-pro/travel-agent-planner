@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="|${appName} · ${tagline}|">Wanderly · AI Travel Agent</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✈️</text></svg>">
+
+    <!-- Apply saved theme before first paint -->
+    <script>
+        (function () {
+            const saved = localStorage.getItem('theme');
+            if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+            }
+        })();
+    </script>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+                        display: ['"Plus Jakarta Sans"', 'Inter', 'sans-serif']
+                    },
+                    keyframes: {
+                        fadeUp: { '0%': { opacity: 0, transform: 'translateY(10px)' }, '100%': { opacity: 1, transform: 'translateY(0)' } },
+                        float: { '0%,100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-6px)' } },
+                        blink: { '0%,80%,100%': { opacity: .25 }, '40%': { opacity: 1 } }
+                    },
+                    animation: {
+                        'fade-up': 'fadeUp .35s ease-out both',
+                        float: 'float 4s ease-in-out infinite',
+                        blink: 'blink 1.4s infinite both'
+                    }
+                }
+            }
+        };
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+
+    <style type="text/tailwindcss">
+        .field { @apply w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition
+                        focus:border-sky-400 focus:ring-2 focus:ring-sky-500/30
+                        dark:border-slate-700 dark:bg-slate-800/80 dark:[color-scheme:dark]; }
+        .label { @apply mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400; }
+        .section-title { @apply mb-2 px-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500; }
+        .icon-btn { @apply rounded-xl p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900
+                           dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white; }
+    </style>
+    <style>
+        .scroll-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+        .scroll-thin::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, .35); border-radius: 9999px; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+
+        /* Rendered markdown from the agent */
+        .md { font-size: 15px; line-height: 1.7; overflow-wrap: anywhere; }
+        .md > :first-child { margin-top: 0; }
+        .md > :last-child { margin-bottom: 0; }
+        .md p { margin: .55rem 0; }
+        .md h3 { font-family: "Plus Jakarta Sans", Inter, sans-serif; font-size: 1.05rem; font-weight: 700; margin: 1.1rem 0 .4rem; }
+        .md h4 { font-weight: 600; margin: .9rem 0 .3rem; }
+        .md ul { list-style: disc; padding-left: 1.35rem; margin: .45rem 0; }
+        .md ol { list-style: decimal; padding-left: 1.35rem; margin: .45rem 0; }
+        .md li { margin: .2rem 0; padding-left: .15rem; }
+        .md li::marker { color: #0ea5e9; }
+        .md strong { font-weight: 650; color: #0f172a; }
+        .dark .md strong { color: #f8fafc; }
+        .md a { color: #0284c7; text-decoration: underline; text-underline-offset: 2px; }
+        .dark .md a { color: #38bdf8; }
+        .md code { background: rgba(14, 165, 233, .12); padding: .1rem .35rem; border-radius: .35rem; font-size: .85em; }
+        .md pre { background: #0f172a; color: #e2e8f0; padding: .9rem 1rem; border-radius: .8rem; overflow-x: auto; font-size: .8rem; margin: .7rem 0; }
+        .md pre code { background: none; padding: 0; }
+        .md hr { border-color: rgba(148, 163, 184, .3); margin: 1rem 0; }
+        .md .table-wrap { overflow-x: auto; margin: .8rem 0; border: 1px solid rgba(148, 163, 184, .3); border-radius: .8rem; }
+        .md table { width: 100%; border-collapse: collapse; font-size: .875rem; }
+        .md th { text-align: left; font-weight: 600; background: rgba(14, 165, 233, .08); }
+        .md th, .md td { padding: .55rem .8rem; border-bottom: 1px solid rgba(148, 163, 184, .2); white-space: nowrap; }
+        .md tbody tr:last-child td { border-bottom: 0; }
+    </style>
+</head>
+
+<body class="h-full overflow-hidden font-sans antialiased text-slate-800 dark:text-slate-100
+             bg-gradient-to-br from-sky-50 via-white to-amber-50
+             dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 transition-colors duration-300">
+
+<div class="relative flex h-full">
+
+    <!-- Ambient travel glow -->
+    <div class="pointer-events-none absolute inset-0 overflow-hidden">
+        <div class="absolute -top-32 left-1/3 h-96 w-96 rounded-full bg-sky-300/30 blur-3xl dark:bg-sky-500/10"></div>
+        <div class="absolute bottom-0 right-1/4 h-80 w-80 rounded-full bg-amber-200/40 blur-3xl dark:bg-amber-500/5"></div>
+    </div>
+
+    <div id="backdrop" class="fixed inset-0 z-30 hidden bg-slate-950/50 backdrop-blur-sm"></div>
+
+    <!-- ===================== Left sidebar ===================== -->
+    <aside id="sidebar"
+           class="fixed inset-y-0 left-0 z-40 flex w-72 shrink-0 -translate-x-full flex-col border-r border-slate-200/70
+                  bg-white/85 backdrop-blur-xl transition-transform duration-300
+                  dark:border-slate-800 dark:bg-slate-900/85 lg:static lg:translate-x-0">
+
+        <div class="flex items-center gap-3 px-5 pb-4 pt-5">
+            <div class="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br from-sky-500 to-cyan-400 text-white shadow-lg shadow-sky-500/30">
+                <svg class="h-6 w-6 rotate-45" viewBox="0 0 24 24" fill="currentColor"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>
+            </div>
+            <div>
+                <div class="font-display text-lg font-bold tracking-tight" th:text="${appName}">Wanderly</div>
+                <div class="text-xs text-slate-500 dark:text-slate-400" th:text="${tagline}">AI Travel Agent</div>
+            </div>
+            <button id="closeSidebar" class="icon-btn ml-auto lg:hidden" aria-label="Close menu">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M6 18 18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+
+        <div class="px-4">
+            <button id="newTrip"
+                    class="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 py-2.5 text-sm font-semibold text-white
+                           shadow-md transition hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>
+                New trip
+            </button>
+        </div>
+
+        <nav class="scroll-thin flex-1 space-y-6 overflow-y-auto px-4 py-5">
+            <div>
+                <h3 class="section-title">Quick actions</h3>
+                <div class="grid grid-cols-2 gap-2">
+                    <button data-action="flight" class="group rounded-2xl border border-slate-200/80 bg-white/70 p-3 text-left transition hover:-translate-y-0.5 hover:border-sky-300 hover:shadow-lg hover:shadow-sky-500/10 dark:border-slate-800 dark:bg-slate-800/40 dark:hover:border-sky-500/50">
+                        <div class="grid h-9 w-9 place-items-center rounded-xl bg-sky-100 text-lg dark:bg-sky-500/15">✈️</div>
+                        <div class="mt-2 text-sm font-semibold">Flights</div>
+                        <div class="text-[11px] text-slate-500 dark:text-slate-400">Search fares</div>
+                    </button>
+                    <button data-action="hotel" class="group rounded-2xl border border-slate-200/80 bg-white/70 p-3 text-left transition hover:-translate-y-0.5 hover:border-violet-300 hover:shadow-lg hover:shadow-violet-500/10 dark:border-slate-800 dark:bg-slate-800/40 dark:hover:border-violet-500/50">
+                        <div class="grid h-9 w-9 place-items-center rounded-xl bg-violet-100 text-lg dark:bg-violet-500/15">🏨</div>
+                        <div class="mt-2 text-sm font-semibold">Hotels</div>
+                        <div class="text-[11px] text-slate-500 dark:text-slate-400">Find stays</div>
+                    </button>
+                    <button data-action="weather" class="group rounded-2xl border border-slate-200/80 bg-white/70 p-3 text-left transition hover:-translate-y-0.5 hover:border-amber-300 hover:shadow-lg hover:shadow-amber-500/10 dark:border-slate-800 dark:bg-slate-800/40 dark:hover:border-amber-500/50">
+                        <div class="grid h-9 w-9 place-items-center rounded-xl bg-amber-100 text-lg dark:bg-amber-500/15">⛅</div>
+                        <div class="mt-2 text-sm font-semibold">Weather</div>
+                        <div class="text-[11px] text-slate-500 dark:text-slate-400">Forecasts</div>
+                    </button>
+                    <button data-action="budget" class="group rounded-2xl border border-slate-200/80 bg-white/70 p-3 text-left transition hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-lg hover:shadow-emerald-500/10 dark:border-slate-800 dark:bg-slate-800/40 dark:hover:border-emerald-500/50">
+                        <div class="grid h-9 w-9 place-items-center rounded-xl bg-emerald-100 text-lg dark:bg-emerald-500/15">💰</div>
+                        <div class="mt-2 text-sm font-semibold">Budget</div>
+                        <div class="text-[11px] text-slate-500 dark:text-slate-400">Plan a trip</div>
+                    </button>
+                </div>
+            </div>
+
+            <div th:each="group : ${promptGroups}">
+                <h3 class="section-title"><span th:text="${group.emoji()}">✈️</span> <span th:text="${group.label()}">Flights</span></h3>
+                <ul class="space-y-0.5">
+                    <li th:each="prompt : ${group.prompts()}">
+                        <button th:data-prompt="${prompt}" th:text="${prompt}"
+                                class="w-full rounded-lg px-3 py-2 text-left text-[13px] leading-snug text-slate-600 transition hover:bg-sky-50 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/80 dark:hover:text-white">
+                            Example prompt
+                        </button>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+
+        <div class="border-t border-slate-200/70 p-3 dark:border-slate-800">
+            <button class="theme-toggle flex w-full items-center justify-between rounded-xl px-3 py-2 text-sm font-medium transition hover:bg-slate-100 dark:hover:bg-slate-800">
+                <span class="dark:hidden">🌙 Dark mode</span>
+                <span class="hidden dark:inline">☀️ Light mode</span>
+                <span class="relative h-5 w-9 rounded-full bg-slate-300 transition dark:bg-sky-500">
+                    <span class="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform dark:translate-x-4"></span>
+                </span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- ===================== Main chat column ===================== -->
+    <div class="relative flex min-w-0 flex-1 flex-col">
+
+        <header class="flex h-16 shrink-0 items-center gap-3 border-b border-slate-200/60 bg-white/60 px-4 backdrop-blur-xl dark:border-slate-800/60 dark:bg-slate-950/60 sm:px-6">
+            <button id="openSidebar" class="icon-btn lg:hidden" aria-label="Open menu">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
+            </button>
+            <div class="flex items-center gap-2 font-display font-bold lg:hidden" th:text="${appName}">Wanderly</div>
+
+            <div class="hidden items-center gap-2 text-sm lg:flex">
+                <span class="h-2 w-2 animate-pulse rounded-full bg-emerald-500"></span>
+                <span class="font-medium">Travel agent online</span>
+                <span class="mx-1 text-slate-300 dark:text-slate-700">|</span>
+                <span class="rounded-full bg-sky-100 px-2.5 py-0.5 text-xs font-medium text-sky-700 dark:bg-sky-500/15 dark:text-sky-300">✈️ Flights</span>
+                <span class="rounded-full bg-violet-100 px-2.5 py-0.5 text-xs font-medium text-violet-700 dark:bg-violet-500/15 dark:text-violet-300">🏨 Hotels</span>
+                <span class="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">⛅ Weather</span>
+            </div>
+
+            <div class="ml-auto flex items-center gap-1">
+                <span id="conversationBadge" title="Conversation ID — the agent remembers context within this trip"
+                      class="mr-1 hidden items-center gap-1.5 rounded-full border border-slate-200 bg-white/70 px-2.5 py-1 font-mono text-[11px] text-slate-500 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-400 sm:inline-flex">
+                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.86 9.86 0 01-4-.83L3 20l1.4-3.72A7.6 7.6 0 013 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+                    <span id="conversationId">—</span>
+                </span>
+                <button id="openPlanner"
+                        class="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1.5 text-sm font-medium text-emerald-800 transition hover:bg-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:hover:bg-emerald-500/25 xl:hidden">
+                    💰 <span class="hidden sm:inline">Budget planner</span>
+                </button>
+                <button class="theme-toggle icon-btn" aria-label="Toggle dark mode">
+                    <svg class="h-5 w-5 dark:hidden" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z"/></svg>
+                    <svg class="hidden h-5 w-5 text-amber-300 dark:block" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z"/></svg>
+                </button>
+            </div>
+        </header>
+
+        <main id="chatScroll" class="scroll-thin flex-1 overflow-y-auto">
+            <div id="messages" class="mx-auto w-full max-w-3xl space-y-7 px-4 py-6 sm:px-6">
+
+                <!-- Welcome / empty state -->
+                <section id="welcome" class="animate-fade-up pt-4 sm:pt-10">
+                    <div class="text-center">
+                        <div class="mx-auto grid h-16 w-16 animate-float place-items-center rounded-3xl bg-gradient-to-br from-sky-500 to-cyan-400 text-white shadow-xl shadow-sky-500/30">
+                            <svg class="h-8 w-8 rotate-45" viewBox="0 0 24 24" fill="currentColor"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>
+                        </div>
+                        <h1 class="mt-6 font-display text-3xl font-extrabold tracking-tight sm:text-4xl">
+                            Where to <span class="bg-gradient-to-r from-sky-500 via-cyan-500 to-amber-500 bg-clip-text text-transparent">next?</span>
+                        </h1>
+                        <p class="mx-auto mt-3 max-w-xl text-slate-500 dark:text-slate-400">
+                            I'm <strong class="text-slate-700 dark:text-slate-200" th:text="${appName}">Wanderly</strong>, your AI travel agent.
+                            I search flights, compare hotels, check the forecast and plan trips that fit your budget.
+                        </p>
+                    </div>
+
+                    <div class="mt-8 grid gap-4 sm:grid-cols-2">
+                        <button th:each="dest, it : ${destinations}" th:data-dest-card="${dest.name()}"
+                                class="group relative overflow-hidden rounded-3xl bg-gradient-to-br p-5 text-left text-white shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl"
+                                th:classappend="${it.index % 2 == 0} ? 'from-cyan-500 via-sky-500 to-blue-600 shadow-sky-500/20' : 'from-amber-400 via-orange-500 to-rose-500 shadow-orange-500/20'">
+                            <div class="absolute -bottom-6 -right-3 text-8xl opacity-30 transition duration-500 group-hover:scale-110 group-hover:opacity-40" th:text="${dest.emoji()}">🏖️</div>
+                            <div class="text-[11px] font-medium uppercase tracking-widest text-white/80">
+                                From <span th:text="${origin}">Delhi</span> · <span th:text="${travelDateLabel}">21 Aug 2026</span>
+                            </div>
+                            <div class="mt-1 font-display text-2xl font-bold" th:text="${dest.name()}">Goa</div>
+                            <div class="text-sm text-white/90" th:text="${dest.tagline()}">Beaches</div>
+                            <div class="mt-4 inline-flex items-center gap-1 rounded-full bg-white/20 px-3 py-1 text-sm font-medium backdrop-blur transition group-hover:bg-white/30">
+                                Plan this trip <span class="transition group-hover:translate-x-0.5">→</span>
+                            </div>
+                        </button>
+                    </div>
+
+                    <div class="mt-5 grid gap-3 sm:grid-cols-2">
+                        <button th:each="group : ${promptGroups}" th:data-prompt="${group.prompts()[0]}"
+                                class="rounded-2xl border border-slate-200/80 bg-white/70 p-4 text-left backdrop-blur transition hover:border-sky-300 hover:shadow-md dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-sky-500/50">
+                            <div class="text-xs font-semibold text-sky-600 dark:text-sky-400">
+                                <span th:text="${group.emoji()}">✈️</span> <span th:text="${group.label()}">Flights</span>
+                            </div>
+                            <div class="mt-1 text-sm text-slate-700 dark:text-slate-200" th:text="${group.prompts()[0]}">Prompt</div>
+                        </button>
+                    </div>
+                </section>
+            </div>
+        </main>
+
+        <!-- Composer -->
+        <div class="shrink-0 px-3 pb-4 pt-2 sm:px-6">
+            <div class="mx-auto max-w-3xl">
+                <div class="no-scrollbar mb-2 flex gap-2 overflow-x-auto">
+                    <button data-action="flight" class="shrink-0 rounded-full border border-slate-200 bg-white/80 px-3 py-1.5 text-xs font-medium transition hover:border-sky-400 hover:text-sky-700 dark:border-slate-700 dark:bg-slate-900/70 dark:hover:text-sky-300">✈️ Flights</button>
+                    <button data-action="hotel" class="shrink-0 rounded-full border border-slate-200 bg-white/80 px-3 py-1.5 text-xs font-medium transition hover:border-violet-400 hover:text-violet-700 dark:border-slate-700 dark:bg-slate-900/70 dark:hover:text-violet-300">🏨 Hotels</button>
+                    <button data-action="weather" class="shrink-0 rounded-full border border-slate-200 bg-white/80 px-3 py-1.5 text-xs font-medium transition hover:border-amber-400 hover:text-amber-700 dark:border-slate-700 dark:bg-slate-900/70 dark:hover:text-amber-300">⛅ Weather</button>
+                    <button data-action="budget" class="shrink-0 rounded-full border border-slate-200 bg-white/80 px-3 py-1.5 text-xs font-medium transition hover:border-emerald-400 hover:text-emerald-700 dark:border-slate-700 dark:bg-slate-900/70 dark:hover:text-emerald-300">💰 Budget planner</button>
+                </div>
+
+                <form id="chatForm"
+                      class="relative rounded-3xl border border-slate-200 bg-white shadow-xl shadow-sky-900/5 transition
+                             focus-within:border-sky-300 focus-within:ring-4 focus-within:ring-sky-500/10
+                             dark:border-slate-700 dark:bg-slate-900 dark:focus-within:border-sky-500/50">
+                    <label for="messageInput" class="sr-only">Message</label>
+                    <textarea id="messageInput" rows="1"
+                              placeholder="Ask about flights, hotels, weather — or plan a trip on a budget…"
+                              class="scroll-thin block max-h-52 w-full resize-none bg-transparent px-5 pb-14 pt-4 text-[15px] outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500"></textarea>
+                    <div class="pointer-events-none absolute bottom-3.5 left-5 text-[11px] text-slate-400 dark:text-slate-500">
+                        <kbd class="rounded bg-slate-100 px-1 dark:bg-slate-800">Enter</kbd> send ·
+                        <kbd class="rounded bg-slate-100 px-1 dark:bg-slate-800">Shift + Enter</kbd> new line
+                    </div>
+                    <button id="sendBtn" type="submit" disabled aria-label="Send message"
+                            class="absolute bottom-2.5 right-2.5 grid h-10 w-10 place-items-center rounded-full bg-gradient-to-br from-sky-500 to-cyan-500 text-white shadow-md shadow-sky-500/30
+                                   transition hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:from-slate-300 disabled:to-slate-300 disabled:shadow-none disabled:hover:scale-100
+                                   dark:disabled:from-slate-700 dark:disabled:to-slate-700">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 10.5 12 3m0 0 7.5 7.5M12 3v18"/></svg>
+                    </button>
+                </form>
+
+                <p class="mt-2 text-center text-[11px] text-slate-400 dark:text-slate-500">
+                    Demo data: flights <span th:text="${origin}">Delhi</span> → <span th:text="${#strings.listJoin(destinationNames, ' / ')}">Goa / Mumbai</span>
+                    on <span th:text="${travelDateLabel}">21 Aug 2026</span> · hotels in <span th:text="${#strings.listJoin(destinationNames, ' & ')}">Goa & Mumbai</span>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================== Right: budget planner ===================== -->
+    <aside id="planner"
+           class="fixed inset-y-0 right-0 z-40 flex w-[22rem] max-w-[92vw] shrink-0 translate-x-full flex-col border-l border-slate-200/70
+                  bg-white/90 backdrop-blur-xl transition-transform duration-300
+                  dark:border-slate-800 dark:bg-slate-900/90 xl:static xl:translate-x-0">
+
+        <div class="flex items-start justify-between gap-3 px-5 pb-3 pt-5">
+            <div>
+                <h2 class="font-display text-lg font-bold">💰 Trip budget planner</h2>
+                <p class="text-xs text-slate-500 dark:text-slate-400">Set a budget — I'll match flights &amp; stays to it.</p>
+            </div>
+            <button id="closePlanner" class="icon-btn xl:hidden" aria-label="Close planner">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M6 18 18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+
+        <div class="scroll-thin flex-1 space-y-5 overflow-y-auto px-5 pb-5">
+            <div>
+                <h3 class="section-title">Popular plans</h3>
+                <div class="space-y-2">
+                    <button th:each="preset : ${budgetPresets}" type="button"
+                            class="preset flex w-full items-center gap-3 rounded-2xl border border-slate-200/80 bg-white/70 p-3 text-left transition hover:border-emerald-300 hover:shadow-md dark:border-slate-800 dark:bg-slate-800/40 dark:hover:border-emerald-500/50"
+                            th:data-dest="${preset.destination()}" th:data-nights="${preset.nights()}"
+                            th:data-travellers="${preset.travellers()}" th:data-budget="${preset.budget()}" th:data-style="${preset.style()}">
+                        <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-slate-100 text-xl dark:bg-slate-800" th:text="${preset.emoji()}">🏖️</span>
+                        <span class="min-w-0 flex-1">
+                            <span class="block truncate text-sm font-semibold" th:text="${preset.title()}">Goa beach weekend</span>
+                            <span class="block text-[11px] text-slate-500 dark:text-slate-400"
+                                  th:text="|${preset.nights()} nights · ${preset.travellers()} traveller${preset.travellers() > 1 ? 's' : ''} · ${preset.style()}|">2 nights · 2 travellers</span>
+                        </span>
+                        <span class="text-sm font-bold text-emerald-600 dark:text-emerald-400"
+                              th:text="|₹${#numbers.formatInteger(preset.budget(), 1, 'COMMA')}|">₹20,000</span>
+                    </button>
+                </div>
+            </div>
+
+            <form id="plannerForm" class="space-y-4" novalidate>
+                <h3 class="section-title !mb-0">Customise</h3>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="label" for="pFrom">From</label>
+                        <input id="pFrom" class="field" th:value="${origin}" value="Delhi" required>
+                    </div>
+                    <div>
+                        <label class="label" for="pTo">To</label>
+                        <input id="pTo" class="field" list="destList" th:value="${destinationNames[0]}" value="Goa" required>
+                        <datalist id="destList">
+                            <option th:each="name : ${destinationNames}" th:value="${name}"></option>
+                        </datalist>
+                    </div>
+                    <div class="col-span-2">
+                        <label class="label" for="pDate">Departure date</label>
+                        <input id="pDate" type="date" class="field" th:value="${travelDate}" required>
+                    </div>
+                    <div>
+                        <label class="label" for="pNights">Nights</label>
+                        <input id="pNights" type="number" min="1" max="30" value="3" class="field">
+                    </div>
+                    <div>
+                        <label class="label" for="pTravellers">Travellers</label>
+                        <input id="pTravellers" type="number" min="1" max="9" value="2" class="field">
+                    </div>
+                </div>
+
+                <div>
+                    <span class="label">Travel style</span>
+                    <div class="grid grid-cols-3 gap-1 rounded-xl bg-slate-100 p-1 dark:bg-slate-800">
+                        <button type="button" class="style-btn rounded-lg py-1.5 text-xs font-semibold transition" data-style="budget">🎒 Budget</button>
+                        <button type="button" class="style-btn rounded-lg py-1.5 text-xs font-semibold transition" data-style="comfort">🧳 Comfort</button>
+                        <button type="button" class="style-btn rounded-lg py-1.5 text-xs font-semibold transition" data-style="luxury">💎 Luxury</button>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="flex items-end justify-between">
+                        <label class="label" for="pBudget">Total budget</label>
+                        <output id="pBudgetOut" class="font-display text-xl font-bold text-emerald-600 dark:text-emerald-400">₹25,000</output>
+                    </div>
+                    <input id="pBudget" type="range" min="5000" max="200000" step="1000" value="25000" class="mt-1 w-full accent-emerald-500">
+                    <div class="flex justify-between text-[10px] text-slate-400"><span>₹5k</span><span>₹2L</span></div>
+                </div>
+
+                <div class="rounded-2xl border border-emerald-200/70 bg-emerald-50/60 p-4 dark:border-emerald-500/20 dark:bg-emerald-500/5">
+                    <div class="mb-3 flex items-center justify-between">
+                        <span class="text-xs font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">Suggested split</span>
+                        <span id="pRooms" class="text-[11px] text-slate-500 dark:text-slate-400"></span>
+                    </div>
+                    <div id="pSplit" class="space-y-3"></div>
+                </div>
+
+                <button type="submit"
+                        class="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-500/25 transition hover:brightness-105 active:scale-[.99]">
+                    Plan my trip <span>✈️</span>
+                </button>
+            </form>
+        </div>
+    </aside>
+</div>
+
+<script th:inline="javascript">
+    window.WANDERLY_CONFIG = {
+        api: /*[[@{/chat}]]*/ '/chat',
+        appName: /*[[${appName}]]*/ 'Wanderly',
+        origin: /*[[${origin}]]*/ 'Delhi',
+        date: /*[[${travelDate}]]*/ '2026-08-21',
+        destinations: /*[[${destinationNames}]]*/ ['Goa', 'Mumbai']
+    };
+</script>
+<!-- th:inline="none" so regex brackets like [( aren't parsed as Thymeleaf inline expressions -->
+<script th:inline="none">
+(() => {
+    const CONFIG = window.WANDERLY_CONFIG;
+
+    const $ = (sel, root = document) => root.querySelector(sel);
+    const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
+
+    const els = {
+        scroll: $('#chatScroll'), messages: $('#messages'), welcome: $('#welcome'),
+        form: $('#chatForm'), input: $('#messageInput'), send: $('#sendBtn'),
+        sidebar: $('#sidebar'), planner: $('#planner'), backdrop: $('#backdrop')
+    };
+    const inr = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
+    const LOGO = '<svg class="h-4 w-4 rotate-45" viewBox="0 0 24 24" fill="currentColor"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>';
+
+    let busy = false;
+    let abortCtrl = null;
+
+    /* ---------------- Conversation (server-side chat memory) ---------------- */
+    // The backend keys its chat memory on the Conversation-Id header; a new ID = a fresh trip with no prior context.
+    let conversationId;
+    function newConversationId() {
+        if (window.crypto?.randomUUID) return crypto.randomUUID();
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+            const r = Math.random() * 16 | 0;
+            return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+        });
+    }
+    function startConversation() {
+        conversationId = newConversationId();
+        $('#conversationId').textContent = conversationId.slice(0, 8);
+        $('#conversationBadge').title = `Conversation ${conversationId} — the agent remembers context within this trip`;
+    }
+    startConversation();
+
+    /* ---------------- Theme ---------------- */
+    $$('.theme-toggle').forEach(btn => btn.addEventListener('click', () => {
+        const dark = document.documentElement.classList.toggle('dark');
+        localStorage.setItem('theme', dark ? 'dark' : 'light');
+    }));
+
+    /* ---------------- Drawers (mobile sidebar / planner) ---------------- */
+    const media = q => window.matchMedia(q).matches;
+    function openSidebar() { els.sidebar.classList.remove('-translate-x-full'); els.backdrop.classList.remove('hidden'); }
+    function openPlanner() {
+        if (media('(min-width: 1280px)')) { $('#pBudget').focus(); return; }
+        els.planner.classList.remove('translate-x-full');
+        els.backdrop.classList.remove('hidden');
+    }
+    function closeDrawers() {
+        els.sidebar.classList.add('-translate-x-full');
+        els.planner.classList.add('translate-x-full');
+        els.backdrop.classList.add('hidden');
+    }
+    $('#openSidebar').addEventListener('click', openSidebar);
+    $('#closeSidebar').addEventListener('click', closeDrawers);
+    $('#openPlanner').addEventListener('click', () => { closeDrawers(); openPlanner(); });
+    $('#closePlanner').addEventListener('click', closeDrawers);
+    els.backdrop.addEventListener('click', closeDrawers);
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawers(); });
+
+    /* ---------------- Markdown (safe, minimal) ---------------- */
+    const escapeHtml = s => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+    function inline(s) {
+        return s
+            .replace(/`([^`]+)`/g, '<code>$1</code>')
+            .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+            .replace(/(^|[^*\w])\*([^*\n]+)\*(?!\w)/g, '$1<em>$2</em>')
+            .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+    }
+
+    function renderMarkdown(src) {
+        const codeBlocks = [];
+        const text = src.replace(/\r\n/g, '\n').replace(/```[\w-]*\n?([\s\S]*?)```/g, (_, code) => {
+            codeBlocks.push(code.replace(/\n$/, ''));
+            return `\u0000${codeBlocks.length - 1}\u0000`;
+        });
+        const lines = escapeHtml(text).split('\n');
+        let html = '', list = null, para = [];
+        const flushPara = () => { if (para.length) { html += `<p>${inline(para.join('<br>'))}</p>`; para = []; } };
+        const closeList = () => { if (list) { html += `</${list}>`; list = null; } };
+        const openList = type => { if (list !== type) { closeList(); html += `<${type}>`; list = type; } };
+        const cells = row => row.trim().replace(/^\||\|$/g, '').split('|').map(c => inline(c.trim()));
+
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            const t = line.trim();
+            let m;
+            if (/^\u0000\d+\u0000$/.test(t)) {
+                flushPara(); closeList();
+                html += `<pre><code>${escapeHtml(codeBlocks[+t.slice(1, -1)])}</code></pre>`;
+            } else if (!t) {
+                flushPara(); closeList();
+            } else if ((m = t.match(/^(#{1,6})\s+(.*)$/))) {
+                flushPara(); closeList();
+                const tag = m[1].length <= 2 ? 'h3' : 'h4';
+                html += `<${tag}>${inline(m[2])}</${tag}>`;
+            } else if (/^(-{3,}|\*{3,}|_{3,})$/.test(t)) {
+                flushPara(); closeList(); html += '<hr>';
+            } else if (t.includes('|') && i + 1 < lines.length && /^\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?$/.test(lines[i + 1].trim())) {
+                flushPara(); closeList();
+                const head = cells(t);
+                i++;
+                let rows = '';
+                while (i + 1 < lines.length && lines[i + 1].includes('|') && lines[i + 1].trim()) {
+                    i++;
+                    rows += '<tr>' + cells(lines[i]).map(c => `<td>${c}</td>`).join('') + '</tr>';
+                }
+                html += `<div class="table-wrap"><table><thead><tr>${head.map(c => `<th>${c}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>`;
+            } else if ((m = t.match(/^[-*•+]\s+(.*)$/))) {
+                flushPara(); openList('ul'); html += `<li>${inline(m[1])}</li>`;
+            } else if ((m = t.match(/^\d+[.)]\s+(.*)$/))) {
+                flushPara(); openList('ol'); html += `<li>${inline(m[1])}</li>`;
+            } else if (list && /^\s{2,}/.test(line)) {
+                html = html.replace(/<\/li>$/, `<br>${inline(t)}</li>`);
+            } else {
+                closeList(); para.push(t);
+            }
+        }
+        flushPara(); closeList();
+        return html;
+    }
+
+    /* ---------------- Messages ---------------- */
+    const timeNow = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const scrollDown = () => els.scroll.scrollTo({ top: els.scroll.scrollHeight, behavior: 'smooth' });
+    const hideWelcome = () => { if (els.welcome.isConnected) els.welcome.remove(); };
+
+    function avatar(error) {
+        return `<div class="grid h-8 w-8 shrink-0 place-items-center rounded-xl text-white shadow-md ${error
+            ? 'bg-rose-500 shadow-rose-500/30'
+            : 'bg-gradient-to-br from-sky-500 to-cyan-400 shadow-sky-500/30'}">${error ? '!' : LOGO}</div>`;
+    }
+
+    function addUserMessage(text) {
+        hideWelcome();
+        const row = document.createElement('div');
+        row.className = 'flex justify-end animate-fade-up';
+        row.innerHTML = `<div class="max-w-[85%] whitespace-pre-wrap break-words rounded-3xl rounded-br-lg bg-gradient-to-br from-sky-500 to-cyan-500 px-4 py-2.5 text-[15px] leading-relaxed text-white shadow-md shadow-sky-500/20"></div>`;
+        row.firstElementChild.textContent = text;
+        els.messages.appendChild(row);
+        scrollDown();
+    }
+
+    function addAgentMessage(text, { error = false, retryPrompt = null } = {}) {
+        hideWelcome();
+        const row = document.createElement('div');
+        row.className = 'group flex gap-3 sm:gap-4 animate-fade-up';
+        row.innerHTML = `
+            ${avatar(error)}
+            <div class="min-w-0 flex-1 pt-0.5">
+                <div class="mb-1 flex items-baseline gap-2">
+                    <span class="text-sm font-semibold">${escapeHtml(CONFIG.appName)}</span>
+                    <span class="text-[11px] text-slate-400">${timeNow()}</span>
+                </div>
+                <div class="${error
+                    ? 'rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300'
+                    : 'md text-slate-700 dark:text-slate-200'}"></div>
+                <div class="mt-2 flex gap-1 text-xs text-slate-400 opacity-0 transition group-hover:opacity-100 focus-within:opacity-100">
+                    ${error ? '' : '<button class="copy-btn rounded-md px-2 py-1 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200">Copy</button>'}
+                    ${retryPrompt ? '<button class="retry-btn rounded-md px-2 py-1 font-medium text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40">↻ Retry</button>' : ''}
+                </div>
+            </div>`;
+
+        const body = row.querySelector(error ? '.border' : '.md');
+        if (error) body.textContent = text; else body.innerHTML = renderMarkdown(text);
+        if (error) row.querySelector('.opacity-0').classList.remove('opacity-0');
+
+        row.querySelector('.copy-btn')?.addEventListener('click', async e => {
+            await navigator.clipboard.writeText(text);
+            e.target.textContent = 'Copied ✓';
+            setTimeout(() => (e.target.textContent = 'Copy'), 1500);
+        });
+        row.querySelector('.retry-btn')?.addEventListener('click', () => { row.remove(); sendMessage(retryPrompt, { echo: false }); });
+
+        els.messages.appendChild(row);
+        scrollDown();
+    }
+
+    function statusesFor(prompt) {
+        const p = prompt.toLowerCase();
+        const s = [];
+        if (/flight|fly|airline|fare/.test(p)) s.push('✈️ Searching flights');
+        if (/hotel|stay|room|resort|night/.test(p)) s.push('🏨 Finding hotels');
+        if (/weather|forecast|rain|umbrella|temperature|climate/.test(p)) s.push('⛅ Checking the forecast');
+        if (/budget|plan|trip|₹|inr|cost/.test(p)) s.push('💰 Crunching your budget');
+        return s.length ? s : ['🧭 Thinking'];
+    }
+
+    function showTyping(prompt) {
+        const statuses = statusesFor(prompt);
+        const row = document.createElement('div');
+        row.className = 'flex gap-3 sm:gap-4 animate-fade-up';
+        row.innerHTML = `
+            ${avatar(false)}
+            <div class="flex items-center gap-3 rounded-2xl border border-slate-200/70 bg-white/80 px-4 py-2.5 text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-400">
+                <span class="status">${statuses[0]}</span>
+                <span class="flex gap-1">
+                    <span class="h-1.5 w-1.5 animate-blink rounded-full bg-sky-500"></span>
+                    <span class="h-1.5 w-1.5 animate-blink rounded-full bg-sky-500 [animation-delay:.2s]"></span>
+                    <span class="h-1.5 w-1.5 animate-blink rounded-full bg-sky-500 [animation-delay:.4s]"></span>
+                </span>
+            </div>`;
+        els.messages.appendChild(row);
+        scrollDown();
+        let i = 0;
+        const timer = setInterval(() => { i = (i + 1) % statuses.length; row.querySelector('.status').textContent = statuses[i]; }, 1800);
+        return { stop() { clearInterval(timer); row.remove(); } };
+    }
+
+    /* ---------------- Sending ---------------- */
+    function autoResize() {
+        els.input.style.height = 'auto';
+        els.input.style.height = Math.min(els.input.scrollHeight, 208) + 'px';
+        els.send.disabled = busy || !els.input.value.trim();
+    }
+
+    async function sendMessage(raw, { echo = true } = {}) {
+        const text = (raw || '').trim();
+        if (!text || busy) return;
+        busy = true;
+        if (echo) addUserMessage(text);
+        els.input.value = '';
+        autoResize();
+        const typing = showTyping(text);
+        abortCtrl = new AbortController();
+        try {
+            const res = await fetch(CONFIG.api, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'text/plain;charset=UTF-8',
+                    'Conversation-Id': conversationId
+                },
+                body: text,
+                signal: abortCtrl.signal
+            });
+            const body = await res.text();
+            if (!res.ok) {
+                let detail = body;
+                try { const j = JSON.parse(body); detail = j.message || j.error || body; } catch (_) { /* plain text */ }
+                throw new Error(`Server error ${res.status}${detail ? ': ' + detail : ''}`);
+            }
+            typing.stop();
+            addAgentMessage(body.trim() || "I couldn't find anything for that — try rephrasing?");
+        } catch (err) {
+            typing.stop();
+            if (err.name !== 'AbortError') {
+                addAgentMessage(err.message || 'Network error — is the server running?', { error: true, retryPrompt: text });
+            }
+        } finally {
+            busy = false;
+            abortCtrl = null;
+            autoResize();
+        }
+    }
+
+    els.form.addEventListener('submit', e => { e.preventDefault(); sendMessage(els.input.value); });
+    els.input.addEventListener('input', autoResize);
+    els.input.addEventListener('keydown', e => {
+        if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); els.form.requestSubmit(); }
+    });
+
+    $('#newTrip').addEventListener('click', () => {
+        abortCtrl?.abort();
+        busy = false;
+        startConversation();
+        els.messages.innerHTML = '';
+        els.messages.appendChild(els.welcome);
+        els.input.value = '';
+        autoResize();
+        closeDrawers();
+        els.input.focus();
+    });
+
+    /* ---------------- Quick actions & example prompts ---------------- */
+    const firstDest = () => CONFIG.destinations[0] || 'Goa';
+    const templates = {
+        flight: () => `Find flights from ${CONFIG.origin} to ${firstDest()} on ${CONFIG.date}`,
+        hotel: () => `Find hotels in ${firstDest()} under ₹3,000 per night`,
+        weather: () => `What's the weather forecast for ${firstDest()} on ${CONFIG.date}?`
+    };
+
+    function quickAction(type) {
+        closeDrawers();
+        if (type === 'budget') { openPlanner(); return; }
+        const text = templates[type]();
+        els.input.value = text;
+        autoResize();
+        els.input.focus();
+        const at = text.indexOf(firstDest());
+        if (at >= 0) els.input.setSelectionRange(at, at + firstDest().length); // pre-select destination for quick edit
+    }
+
+    $$('[data-action]').forEach(btn => btn.addEventListener('click', () => quickAction(btn.dataset.action)));
+    $$('[data-prompt]').forEach(btn => btn.addEventListener('click', () => { closeDrawers(); sendMessage(btn.dataset.prompt); }));
+    $$('[data-dest-card]').forEach(btn => btn.addEventListener('click', () => {
+        const d = btn.dataset.destCard;
+        sendMessage(`Plan a quick trip from ${CONFIG.origin} to ${d} on ${CONFIG.date}: show the available flights, hotels in ${d} and the weather forecast.`);
+    }));
+
+    /* ---------------- Budget planner ---------------- */
+    const P = {
+        form: $('#plannerForm'), from: $('#pFrom'), to: $('#pTo'), date: $('#pDate'),
+        nights: $('#pNights'), travellers: $('#pTravellers'), budget: $('#pBudget'),
+        budgetOut: $('#pBudgetOut'), split: $('#pSplit'), rooms: $('#pRooms')
+    };
+    // Indicative share of the total budget per category, by travel style
+    const SPLITS = {
+        budget: { flights: .45, stay: .35, other: .20 },
+        comfort: { flights: .35, stay: .45, other: .20 },
+        luxury: { flights: .25, stay: .60, other: .15 }
+    };
+    let style = 'comfort';
+
+    function currentPlan() {
+        const budget = +P.budget.value;
+        const nights = Math.max(1, Math.round(+P.nights.value || 1));
+        const travellers = Math.max(1, Math.round(+P.travellers.value || 1));
+        const rooms = Math.ceil(travellers / 2);
+        const s = SPLITS[style];
+        const flights = budget * s.flights, stay = budget * s.stay, other = budget * s.other;
+        return {
+            budget, nights, travellers, rooms, flights, stay, other,
+            perTicket: flights / travellers,
+            perNight: Math.floor(stay / nights / rooms / 100) * 100,
+            perDay: other / (nights + 1)
+        };
+    }
+
+    function setStyle(next) {
+        style = SPLITS[next] ? next : 'comfort';
+        $$('.style-btn').forEach(b => {
+            const active = b.dataset.style === style;
+            b.classList.toggle('bg-white', active);
+            b.classList.toggle('dark:bg-slate-700', active);
+            b.classList.toggle('shadow', active);
+            b.classList.toggle('text-slate-900', active);
+            b.classList.toggle('dark:text-white', active);
+            b.classList.toggle('text-slate-500', !active);
+        });
+        renderPlanner();
+    }
+
+    function renderPlanner() {
+        const p = currentPlan();
+        P.budgetOut.textContent = inr.format(p.budget);
+        P.rooms.textContent = `${p.rooms} room${p.rooms > 1 ? 's' : ''} · ${p.nights} night${p.nights > 1 ? 's' : ''}`;
+        const rows = [
+            ['✈️', 'Flights', p.flights, `≈ ${inr.format(p.perTicket)} per ticket`, 'bg-sky-500'],
+            ['🏨', 'Stay', p.stay, `Hotels up to ≈ ${inr.format(p.perNight)} / night`, 'bg-violet-500'],
+            ['🍽️', 'Food & local', p.other, `≈ ${inr.format(p.perDay)} per day`, 'bg-amber-500']
+        ];
+        P.split.innerHTML = rows.map(([icon, label, amount, hint, bar]) => `
+            <div>
+                <div class="flex items-center justify-between text-sm">
+                    <span class="font-medium">${icon} ${label}</span>
+                    <span class="font-semibold tabular-nums">${inr.format(amount)}</span>
+                </div>
+                <div class="mt-1 h-1.5 overflow-hidden rounded-full bg-white dark:bg-slate-800">
+                    <div class="h-full rounded-full ${bar} transition-all duration-500" style="width:${Math.round(amount / p.budget * 100)}%"></div>
+                </div>
+                <div class="mt-1 text-[11px] text-slate-500 dark:text-slate-400">${hint}</div>
+            </div>`).join('');
+    }
+
+    [P.budget, P.nights, P.travellers].forEach(el => el.addEventListener('input', renderPlanner));
+    $$('.style-btn').forEach(b => b.addEventListener('click', () => setStyle(b.dataset.style)));
+
+    $$('.preset').forEach(btn => btn.addEventListener('click', () => {
+        P.to.value = btn.dataset.dest;
+        P.nights.value = btn.dataset.nights;
+        P.travellers.value = btn.dataset.travellers;
+        P.budget.value = btn.dataset.budget;
+        $$('.preset').forEach(b => b.classList.remove('ring-2', 'ring-emerald-400'));
+        btn.classList.add('ring-2', 'ring-emerald-400');
+        setStyle(btn.dataset.style);
+    }));
+
+    P.form.addEventListener('submit', e => {
+        e.preventDefault();
+        const missing = [P.from, P.to, P.date].find(el => !el.value.trim());
+        if (missing) { missing.focus(); missing.classList.add('ring-2', 'ring-rose-400'); setTimeout(() => missing.classList.remove('ring-2', 'ring-rose-400'), 1500); return; }
+
+        const p = currentPlan();
+        const from = P.from.value.trim(), to = P.to.value.trim(), date = P.date.value;
+        const who = `${p.travellers} traveller${p.travellers > 1 ? 's' : ''}`;
+        const prompt =
+`Plan a ${p.nights}-night ${style} trip from ${from} to ${to}, departing on ${date}, for ${who} with a total budget of ${inr.format(p.budget)}.
+1. Search flights from ${from} to ${to} on ${date} and pick the best value (fare × ${p.travellers}).
+2. Find hotels in ${to} up to about ${inr.format(p.perNight)} per night (${p.rooms} room${p.rooms > 1 ? 's' : ''} × ${p.nights} night${p.nights > 1 ? 's' : ''}).
+3. Check the weather forecast for ${to} on ${date}.
+4. Give me a cost breakdown table, the remaining budget, and alternatives if it doesn't fit.`;
+        closeDrawers();
+        sendMessage(prompt);
+    });
+
+    setStyle('comfort');
+    autoResize();
+    els.input.focus();
+})();
+</script>
+</body>
+</html>
